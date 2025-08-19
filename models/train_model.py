@@ -6,10 +6,22 @@ from sklearn.metrics import mean_squared_error, r2_score
 import mlflow
 import mlflow.sklearn
 import os
+import sys
 
 def train_model():
+    # Vérifier si on est en environnement CI
+    is_ci = os.getenv('CI') == 'true'
+    
+    # Construire le chemin absolu vers les données
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_path = os.path.join(base_dir, 'data', 'sample_data.csv')
+    
     # Charger les données
-    data = pd.read_csv('../data/sample_data.csv')
+    data = pd.read_csv(data_path)
+    
+    # Utiliser un subset plus petit en CI pour accélérer l'entraînement
+    if is_ci and len(data) > 100:
+        data = data.sample(100, random_state=42)
     
     # Séparer features et target
     X = data[['feature1', 'feature2', 'feature3']]
@@ -33,8 +45,10 @@ def train_model():
         mse = mean_squared_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
         
-        # Logger les paramètres (même s'il n'y en a pas pour la régression linéaire)
+        # Logger les paramètres
         mlflow.log_param("model_type", "LinearRegression")
+        mlflow.log_param("is_ci", is_ci)
+        mlflow.log_param("dataset_size", len(data))
         
         # Logger les métriques
         mlflow.log_metric("mse", mse)
@@ -44,8 +58,11 @@ def train_model():
         mlflow.sklearn.log_model(model, "model")
         
         # Enregistrer les métriques dans un fichier pour le CI/CD
-        os.makedirs("../mlflow_output", exist_ok=True)
-        with open("../mlflow_output/metrics.txt", "w") as f:
+        output_dir = os.path.join(base_dir, 'mlflow_output')
+        os.makedirs(output_dir, exist_ok=True)
+        metrics_path = os.path.join(output_dir, 'metrics.txt')
+        
+        with open(metrics_path, "w") as f:
             f.write(f"MSE: {mse}\n")
             f.write(f"R2: {r2}\n")
         

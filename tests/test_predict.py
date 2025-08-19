@@ -1,5 +1,11 @@
+import sys
+import os
 import pytest
 import numpy as np
+
+# Ajouter le répertoire racine au chemin Python
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from models.predict import make_prediction
 
 def test_make_prediction():
